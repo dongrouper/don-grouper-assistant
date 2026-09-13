@@ -169,7 +169,10 @@ const commands = [
         .addSubcommand((sub) => sub.setName('list').setDescription('Lihat daftar').addBooleanOption((o) => o.setName('shared').setDescription('Lihat daftar server')))
         .addSubcommand((sub) => sub.setName('hapus').setDescription('Hapus film').addStringOption((o) => o.setName('judul').setDescription('Judul film').setRequired(true)).addBooleanOption((o) => o.setName('shared').setDescription('Hapus dari daftar server'))),
     movieCommand('letterboxd', 'Hubungkan atau baca profil Letterboxd')
-        .addSubcommand((sub) => sub.setName('set').setDescription('Simpan username Letterboxd').addStringOption((o) => o.setName('username').setDescription('Username Letterboxd').setRequired(true)))
+        .addSubcommand((sub) => sub.setName('connect').setDescription('Hubungkan username Letterboxd').addStringOption((o) => o.setName('username').setDescription('Username publik Letterboxd').setRequired(true)))
+        .addSubcommand((sub) => sub.setName('set').setDescription('Alias lama untuk connect').addStringOption((o) => o.setName('username').setDescription('Username publik Letterboxd').setRequired(true)))
+        .addSubcommand((sub) => sub.setName('status').setDescription('Lihat akun Letterboxd yang terhubung'))
+        .addSubcommand((sub) => sub.setName('disconnect').setDescription('Putuskan akun Letterboxd'))
         .addSubcommand((sub) => sub.setName('latest').setDescription('Tampilkan log terbaru')),
     movieCommand('rate', 'Beri rating film untuk server')
         .addStringOption((option) => option.setName('judul').setDescription('Judul film').setRequired(true))
@@ -296,9 +299,25 @@ async function handleCard(interaction) {
 
 async function handleLetterboxd(interaction) {
     const data = loadData(); const sub = interaction.options.getSubcommand();
-    if (sub === 'set') { const username = interaction.options.getString('username').replace(/[^a-zA-Z0-9_-]/g, ''); data.letterboxd[interaction.user.id] = username; saveData(data); return interaction.reply(`Profil Letterboxd **${username}** tersimpan.`); }
-    const username = data.letterboxd[interaction.user.id]; if (!username) return interaction.reply('Hubungkan profil dulu dengan `/letterboxd set username:kamu`.');
-    const response = await fetch(`https://letterboxd.com/${username}/rss/`); if (!response.ok) return interaction.reply('Profil Letterboxd tidak ditemukan atau RSS tidak tersedia.');
+    if (sub === 'connect' || sub === 'set') {
+        const username = interaction.options.getString('username').trim().replace(/^@/, '');
+        if (!/^[a-zA-Z0-9_-]{2,30}$/.test(username)) return interaction.reply({ content: 'Username Letterboxd tidak valid.', ephemeral: true });
+        const response = await fetch(`https://letterboxd.com/${encodeURIComponent(username)}/rss/`);
+        if (!response.ok) return interaction.reply({ content: 'Profil Letterboxd tidak ditemukan atau RSS tidak tersedia.', ephemeral: true });
+        data.letterboxd[interaction.user.id] = username;
+        saveData(data);
+        return interaction.reply(`Profil Letterboxd **${username}** berhasil terhubung. Gunakan \/letterboxd latest untuk melihat log terbaru.`);
+    }
+    const username = data.letterboxd[interaction.user.id];
+    if (sub === 'status') return interaction.reply(username ? `Profil Letterboxd yang terhubung: **${username}**\nhttps://letterboxd.com/${username}/` : 'Belum ada profil Letterboxd yang terhubung.');
+    if (sub === 'disconnect') {
+        if (!username) return interaction.reply('Tidak ada profil Letterboxd yang terhubung.');
+        delete data.letterboxd[interaction.user.id];
+        saveData(data);
+        return interaction.reply('Profil Letterboxd berhasil diputuskan.');
+    }
+    if (!username) return interaction.reply('Hubungkan profil dulu dengan `/letterboxd connect username:kamu`.');
+    const response = await fetch(`https://letterboxd.com/${encodeURIComponent(username)}/rss/`); if (!response.ok) return interaction.reply('Profil Letterboxd tidak ditemukan atau RSS tidak tersedia.');
     const xml = await response.text(); const match = xml.match(/<item>[\s\S]*?<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>[\s\S]*?<link>(.*?)<\/link>/); if (!match) return interaction.reply(`Belum ada log tontonan terbaru untuk **${username}**.`);
     return interaction.reply(`Log terbaru **${username}**: [${match[1]}](${match[2]})`);
 }
