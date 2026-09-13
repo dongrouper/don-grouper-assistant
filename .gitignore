@@ -1,3 +1,4 @@
 node_modules/
 .env
 films.json
+movie-data.json

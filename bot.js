@@ -13,6 +13,7 @@ const {
     Routes,
     SlashCommandBuilder
 } = require('discord.js');
+const { commands: movieCommands, handleMovieFeature, handleButton } = require('./movie-features');
 
 const requiredEnv = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_GUILD_ID'];
 const missingEnv = requiredEnv.filter((name) => !process.env[name]);
@@ -70,7 +71,7 @@ const commands = [
         .addSubcommand((subcommand) => subcommand
             .setName('list')
             .setDescription('Tampilkan daftar film server'))
-].map((command) => command.toJSON());
+].map((command) => command.toJSON()).concat(movieCommands);
 
 function loadFilms() {
     if (!fs.existsSync(dataFile)) {
@@ -106,7 +107,11 @@ function buildHelpEmbed() {
             { name: '/ping', value: 'Cek status bot.' },
             { name: '/server', value: 'Lihat informasi server.' },
             { name: '/film tambah', value: 'Simpan film baru ke daftar server.' },
-            { name: '/film list', value: 'Lihat semua film yang tersimpan.' }
+            { name: '/film list', value: 'Lihat semua film yang tersimpan.' },
+            { name: '/movie', value: 'Info film lengkap dari TMDB.' },
+            { name: '/wherewatch, /trailer', value: 'Cek streaming legal dan trailer.' },
+            { name: '/poll, /random, /watchlist', value: 'Movie night, rekomendasi acak, dan daftar tontonan.' },
+            { name: '/rate, /trivia, /card', value: 'Review, trivia, dan koleksi kartu.' }
         );
 }
 
@@ -164,7 +169,22 @@ client.on(Events.MessageCreate, async (message) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
+    if (interaction.isButton()) {
+        try {
+            await handleButton(interaction);
+        } catch (error) {
+            console.error('Button feature error:', error.message);
+            if (!interaction.replied) await interaction.reply({ content: 'Aksi tombol gagal diproses.', ephemeral: true });
+        }
+        return;
+    }
+
     if (!interaction.isChatInputCommand()) {
+        return;
+    }
+
+    if (['movie', 'wherewatch', 'trailer', 'poll', 'movieevent', 'random', 'watchlist', 'letterboxd', 'rate', 'trivia', 'card'].includes(interaction.commandName)) {
+        await handleMovieFeature(interaction);
         return;
     }
 
