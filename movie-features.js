@@ -11,8 +11,14 @@ const {
 const dataFile = path.join(__dirname, 'movie-data.json');
 const tmdbBaseUrl = 'https://api.themoviedb.org/3';
 const cards = [
-    'Don Vito Corleone', 'Ellen Ripley', 'Marty McFly', 'The Bride',
-    'Tyler Durden', 'Clarice Starling', 'Indiana Jones', 'Amelie'
+    { name: 'Don Vito Corleone', movie: 'The Godfather' },
+    { name: 'Ellen Ripley', movie: 'Alien' },
+    { name: 'Marty McFly', movie: 'Back to the Future' },
+    { name: 'The Bride', movie: 'Kill Bill: Vol. 1' },
+    { name: 'Tyler Durden', movie: 'Fight Club' },
+    { name: 'Clarice Starling', movie: 'The Silence of the Lambs' },
+    { name: 'Indiana Jones', movie: 'Raiders of the Lost Ark' },
+    { name: 'Amelie', movie: 'Amelie' }
 ];
 const genres = {
     action: 28, adventure: 12, animation: 16, comedy: 35, crime: 80,
@@ -214,10 +220,34 @@ async function handleButton(interaction) {
 
 async function handleCard(interaction) {
     const data = loadData(); const userId = interaction.user.id; data.cards[userId] ||= [];
-    if (interaction.options.getSubcommand() === 'gacha') { const card = cards[Math.floor(Math.random() * cards.length)]; data.cards[userId].push(card); saveData(data); return interaction.reply(`Kartu yang kamu dapat: **${card}**. Total koleksi: ${data.cards[userId].length}.`); }
-    if (interaction.options.getSubcommand() === 'koleksi') return interaction.reply(data.cards[userId].length ? `Koleksi kamu:\n${data.cards[userId].map((card, index) => `${index + 1}. ${card}`).join('\n')}` : 'Koleksimu masih kosong. Gunakan `/card gacha`.');
-    const recipient = interaction.options.getUser('user'); const card = interaction.options.getString('kartu'); const position = data.cards[userId].indexOf(card);
-    if (position < 0) return interaction.reply({ content: 'Kamu tidak memiliki kartu itu.', ephemeral: true }); data.cards[userId].splice(position, 1); data.cards[recipient.id] ||= []; data.cards[recipient.id].push(card); saveData(data); return interaction.reply(`${interaction.user} menukar kartu **${card}** kepada ${recipient}.`);
+    if (interaction.options.getSubcommand() === 'gacha') {
+        const card = cards[Math.floor(Math.random() * cards.length)];
+        const movie = await findMovie(card.movie);
+        const collectedCard = { name: card.name, movie: card.movie, poster: imageUrl(movie?.poster_path) };
+        data.cards[userId].push(collectedCard);
+        saveData(data);
+        const embed = new EmbedBuilder()
+            .setColor(0xd4a72c)
+            .setTitle('Kartu Baru Didapat!')
+            .setDescription(`**${collectedCard.name}**\nKarakter dari **${collectedCard.movie}**`)
+            .setFooter({ text: `Total koleksi: ${data.cards[userId].length} kartu` });
+        if (collectedCard.poster) embed.setImage(collectedCard.poster);
+        return interaction.reply({ embeds: [embed] });
+    }
+    if (interaction.options.getSubcommand() === 'koleksi') {
+        if (!data.cards[userId].length) return interaction.reply('Koleksimu masih kosong. Gunakan `/card gacha`.');
+        const collection = data.cards[userId].map((card, index) => {
+            const name = typeof card === 'string' ? card : card.name;
+            const movie = typeof card === 'string' ? '' : ` (${card.movie})`;
+            return `${index + 1}. **${name}**${movie}`;
+        }).join('\n');
+        return interaction.reply(`**Koleksi kamu**\n${collection}`);
+    }
+    const recipient = interaction.options.getUser('user'); const cardName = interaction.options.getString('kartu');
+    const position = data.cards[userId].findIndex((card) => (typeof card === 'string' ? card : card.name).toLowerCase() === cardName.toLowerCase());
+    if (position < 0) return interaction.reply({ content: 'Kamu tidak memiliki kartu itu.', ephemeral: true });
+    const card = data.cards[userId].splice(position, 1)[0]; data.cards[recipient.id] ||= []; data.cards[recipient.id].push(card); saveData(data);
+    return interaction.reply(`${interaction.user} menukar kartu **${typeof card === 'string' ? card : card.name}** kepada ${recipient}.`);
 }
 
 async function handleLetterboxd(interaction) {
