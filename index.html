@@ -3,77 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Film Ditonton</title>
+    <meta name="description" content="Undang Don Grouper Assisstant ke server Discord kamu untuk movie night yang lebih seru.">
+    <title>Don Grouper Assisstant | Bot film untuk Discord</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🎬 Daftar Film Ditonton</h1>
-            <p>Catat film yang sudah kamu tonton dan beri rating!</p>
-        </header>
-
-        <!-- Form Tambah Film -->
-        <div class="form-section">
-            <h2>Tambah Film Baru</h2>
-            <form id="filmForm">
-                <div class="form-group">
-                    <label for="judul">Judul Film</label>
-                    <input type="text" id="judul" placeholder="Contoh: Inception" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="tahun">Tahun Rilis</label>
-                    <input type="number" id="tahun" placeholder="Contoh: 2010" min="1900" max="2099" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="genre">Genre</label>
-                    <select id="genre" required>
-                        <option value="">-- Pilih Genre --</option>
-                        <option value="Action">Action</option>
-                        <option value="Comedy">Comedy</option>
-                        <option value="Drama">Drama</option>
-                        <option value="Horror">Horror</option>
-                        <option value="Sci-Fi">Sci-Fi</option>
-                        <option value="Romance">Romance</option>
-                        <option value="Thriller">Thriller</option>
-                        <option value="Animation">Animation</option>
-                        <option value="Other">Lainnya</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="rating">Rating (1-10)</label>
-                    <div class="rating-input">
-                        <input type="range" id="rating" min="1" max="10" value="5" step="1">
-                        <span id="ratingValue" class="rating-badge">5</span>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-add">➕ Tambah Film</button>
-            </form>
-        </div>
-
-        <!-- Daftar Film -->
-        <div class="list-section">
-            <div class="list-header">
-                <h2>Film yang Sudah Ditonton</h2>
-                <div class="stats">
-                    <span id="totalFilm">Total: 0 film</span>
-                    <span id="avgRating">Rata-rata: -</span>
-                </div>
-            </div>
-
-            <div id="filmList" class="film-list">
-                <!-- Film akan ditampilkan di sini -->
-            </div>
-
-            <div id="emptyMessage" class="empty-message">
-                <p>📭 Belum ada film yang ditonton. Tambahkan film pertamamu!</p>
-            </div>
-        </div>
-    </div>
+    <header class="site-header">
+        <a class="brand" href="#top" aria-label="Don Grouper Assisstant home"><span class="brand-mark">DG</span><span>DON GROUPER<br><strong>ASSISSTANT</strong></span></a>
+        <a class="header-link" href="#fitur">Lihat fitur <span aria-hidden="true">↘</span></a>
+    </header>
+    <main id="top">
+        <section class="hero" aria-labelledby="hero-title">
+            <div class="hero-copy"><p class="eyebrow"><span class="live-dot"></span> BOT DISCORD UNTUK PECINTA FILM</p><h1 id="hero-title">Movie night kamu,<br><em>naik level.</em></h1><p class="hero-description">Don Grouper Assisstant membantu server kamu memilih film, membangun watchlist, dan menjaga obrolan tetap hidup.</p><div class="hero-actions"><a id="inviteButton" class="button button-primary" href="#konfigurasi">Tambahkan ke Discord <span aria-hidden="true">→</span></a><a class="button button-quiet" href="#cara-kerja">Cara kerja <span aria-hidden="true">↓</span></a></div><div class="trust-line"><span>✓</span> Gratis untuk dipasang</div></div>
+            <div class="hero-art" aria-label="Ilustrasi suasana menonton film"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="ticket-card"><span class="ticket-label">NOW PLAYING</span><div class="ticket-icon">▶</div><strong>Pick something<br>great tonight.</strong><span class="ticket-meta">DON GROUPER · 20:24</span></div><div class="floating-note note-top">/random <span>✦</span></div><div class="floating-note note-bottom">MOVIE NIGHT <span>●</span></div></div>
+        </section>
+        <section id="fitur" class="feature-section" aria-labelledby="feature-title"><div class="section-heading"><p class="eyebrow">SATU BOT, BANYAK CERITA</p><h2 id="feature-title">Semua yang dibutuhkan<br>untuk server film.</h2></div><div class="feature-grid"><article class="feature-card feature-yellow"><span class="feature-number">01</span><span class="feature-icon">✦</span><h3>Temukan film baru</h3><p>Rekomendasi acak, detail film, trailer, dan streaming legal dalam beberapa ketikan.</p><code>/movie</code></article><article class="feature-card feature-blue"><span class="feature-number">02</span><span class="feature-icon">☷</span><h3>Rencanakan bareng</h3><p>Buat polling movie night, event, dan watchlist bersama tanpa ribet.</p><code>/poll</code></article><article class="feature-card feature-pink"><span class="feature-number">03</span><span class="feature-icon">◎</span><h3>Obrolan lebih hidup</h3><p>AI yang bisa diajak ngobrol dengan gaya dan bahasa yang sesuai server kamu.</p><code>@Don Grouper</code></article></div></section>
+        <section id="cara-kerja" class="steps-section" aria-labelledby="steps-title"><div class="steps-intro"><p class="eyebrow">TIGA LANGKAH SINGKAT</p><h2 id="steps-title">Dari nol ke<br>movie night.</h2></div><div class="steps-list"><div class="step"><span>01</span><div><h3>Klik invite</h3><p>Pilih server tempat Don Grouper akan bergabung.</p></div></div><div class="step"><span>02</span><div><h3>Review izin</h3><p>Discord menampilkan permission yang dibutuhkan bot.</p></div></div><div class="step"><span>03</span><div><h3>Mulai main</h3><p>Ketik <code>/bantuan</code> dan pilih fitur favoritmu.</p></div></div></div></section>
+        <section id="konfigurasi" class="config-section" aria-labelledby="config-title"><div><p class="eyebrow">SIAP BERANGKAT?</p><h2 id="config-title">Pasang Don Grouper<br>di server kamu.</h2><p class="config-copy">Masukkan Application ID bot jika ingin memakai bot lain atau jika ID bawaan belum sesuai.</p></div><form id="configForm" class="config-form"><label for="clientId">Discord Application ID</label><div class="input-row"><input id="clientId" name="clientId" inputmode="numeric" placeholder="Contoh: 123456789012345678" autocomplete="off"><button class="button button-dark" type="submit">Buat link invite <span aria-hidden="true">↗</span></button></div><p id="configStatus" class="form-status" role="status"></p></form></section>
+    </main>
+    <footer><span>© 2026 Don Grouper Assisstant</span><span>Made for better movie nights.</span></footer>
 
     <script src="script.js"></script>
 </body>
