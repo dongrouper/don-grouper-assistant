@@ -57,6 +57,50 @@ const personalityInstructions = {
     gamer: 'Antusias seperti gamer, santai, dan memakai istilah gaming seperlunya tanpa berlebihan.',
     noir: 'Misterius, tenang, dan puitis dengan nuansa detektif film noir. Tetap jelas dan membantu.'
 };
+const localizedMessages = {
+    indonesia: {
+        emptyMention: 'Halo! Tulis pertanyaan setelah mention aku.',
+        noApi: 'API Groq belum dipasang. Hubungi administrator server.',
+        apiError: 'Maaf, layanan AI sedang tidak bisa menjawab. Coba lagi nanti.',
+        attention: attentionMessages
+    },
+    inggris: {
+        emptyMention: 'Hello! Write a question after mentioning me.',
+        noApi: 'The Groq API is not configured. Please contact the server administrator.',
+        apiError: 'Sorry, the AI service cannot answer right now. Try again later.',
+        attention: [
+            'The server is unusually quiet. Pick a movie for movie night, or let me choose one.',
+            'One hour without a stir. Try `/trivia` or `/card gacha`.',
+            'An important question: what movie deserves a watch tonight?',
+            'I have prepared popcorn metaphorically. Anyone up for `/random`?',
+            'This silence has potential. Run `/poll` and let us make a decision.'
+        ]
+    },
+    spanyol: {
+        emptyMention: 'Hola! Escribe una pregunta despues de mencionarme.',
+        noApi: 'La API de Groq no esta configurada. Contacta al administrador.',
+        apiError: 'Lo siento, el servicio de IA no puede responder ahora. Intentalo mas tarde.',
+        attention: ['El servidor esta muy tranquilo. Alguien quiere elegir una pelicula?']
+    },
+    jepang: {
+        emptyMention: 'こんにちは！メンションの後に質問を書いてください。',
+        noApi: 'Groq APIが設定されていません。管理者に連絡してください。',
+        apiError: '申し訳ありません。今はAIサービスが応答できません。後でもう一度お試しください。',
+        attention: ['サーバーが静かですね。今夜の映画を選びませんか？']
+    },
+    korea: {
+        emptyMention: '안녕하세요! 저를 멘션한 후 질문을 작성해주세요.',
+        noApi: 'Groq API가 설정되지 않았습니다. 서버 관리자에게 문의하세요.',
+        apiError: '죄송합니다. 지금은 AI 서비스가 응답할 수 없습니다. 나중에 다시 시도하세요.',
+        attention: ['서버가 너무 조용하네요. 오늘 밤 영화를 골라볼까요?']
+    },
+    prancis: {
+        emptyMention: 'Bonjour ! Ecrivez une question apres m avoir mentionne.',
+        noApi: 'L API Groq n est pas configuree. Contactez l administrateur.',
+        apiError: 'Desole, le service IA ne peut pas repondre maintenant. Reessayez plus tard.',
+        attention: ['Le serveur est bien calme. Quel film regarder ce soir ?']
+    }
+};
 
 function loadSettings() {
     if (!fs.existsSync(settingsFile)) return {};
@@ -76,6 +120,11 @@ function getAssistantPrompt(guildId) {
     const language = languageInstructions[settings.language] || languageInstructions.indonesia;
     const personality = personalityInstructions[settings.personality] || personalityInstructions.eksekutif;
     return `Kamu adalah Don Grouper Assisstant, asisten Discord untuk server film. ${personality} ${language} Jawab ringkas namun bernas, hindari klaim berlebihan, dan jangan meniru dialog karakter tertentu secara langsung.`;
+}
+
+function getLocalizedMessage(guildId, key) {
+    const language = serverSettings[guildId]?.language || 'indonesia';
+    return localizedMessages[language]?.[key] || localizedMessages.indonesia[key];
 }
 
 const serverSettings = loadSettings();
@@ -246,7 +295,8 @@ setInterval(async () => {
         const channelId = settings.inactivityChannelId || activity.channelId;
         const channel = await client.channels.fetch(channelId).catch(() => null);
         if (!channel?.isTextBased() || !channel.send) continue;
-        await channel.send(attentionMessages[Math.floor(Math.random() * attentionMessages.length)]).catch((error) => {
+        const messages = getLocalizedMessage(guildId, 'attention');
+        await channel.send(messages[Math.floor(Math.random() * messages.length)]).catch((error) => {
             console.error(`Tidak bisa mengirim pengingat di guild ${guildId}:`, error.message);
         });
         activity.lastMessageAt = now;
@@ -270,12 +320,12 @@ client.on(Events.MessageCreate, async (message) => {
         .trim();
 
     if (!groq) {
-        await message.reply('API Groq belum dipasang. Tambahkan `GROQ_API_KEY` ke file `.env`.');
+        await message.reply(getLocalizedMessage(message.guildId, 'noApi'));
         return;
     }
 
     if (!prompt) {
-        await message.reply('Halo! Tulis pertanyaan setelah mention aku.');
+        await message.reply(getLocalizedMessage(message.guildId, 'emptyMention'));
         return;
     }
 
@@ -296,7 +346,7 @@ client.on(Events.MessageCreate, async (message) => {
         await message.reply(answer.slice(0, 2000));
     } catch (error) {
         console.error('Groq API error:', error.message);
-        await message.reply('Maaf, Groq sedang tidak bisa menjawab. Periksa API key atau coba lagi nanti.');
+        await message.reply(getLocalizedMessage(message.guildId, 'apiError'));
     }
 });
 
