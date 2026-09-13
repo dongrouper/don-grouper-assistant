@@ -1,0 +1,233 @@
+require('dotenv').config();
+
+const fs = require('node:fs');
+const path = require('node:path');
+const Groq = require('groq-sdk');
+const {
+    Client,
+    Collection,
+    EmbedBuilder,
+    Events,
+    GatewayIntentBits,
+    REST,
+    Routes,
+    SlashCommandBuilder
+} = require('discord.js');
+
+const requiredEnv = ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'DISCORD_GUILD_ID'];
+const missingEnv = requiredEnv.filter((name) => !process.env[name]);
+if (missingEnv.length > 0) {
+    throw new Error(`Environment belum lengkap: ${missingEnv.join(', ')}`);
+}
+
+const dataFile = path.join(__dirname, 'films.json');
+const groq = process.env.GROQ_API_KEY
+    ? new Groq({ apiKey: process.env.GROQ_API_KEY })
+    : null;
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
+});
+const commands = [
+    new SlashCommandBuilder()
+        .setName('ping')
+        .setDescription('Cek apakah Don Grouper Assisstant aktif'),
+    new SlashCommandBuilder()
+        .setName('bantuan')
+        .setDescription('Tampilkan daftar command bot'),
+    new SlashCommandBuilder()
+        .setName('server')
+        .setDescription('Tampilkan informasi server ini'),
+    new SlashCommandBuilder()
+        .setName('film')
+        .setDescription('Kelola daftar film server')
+        .addSubcommand((subcommand) => subcommand
+            .setName('tambah')
+            .setDescription('Tambahkan film ke daftar')
+            .addStringOption((option) => option
+                .setName('judul')
+                .setDescription('Judul film')
+                .setRequired(true))
+            .addIntegerOption((option) => option
+                .setName('tahun')
+                .setDescription('Tahun rilis')
+                .setMinValue(1888)
+                .setMaxValue(2100)
+                .setRequired(true))
+            .addStringOption((option) => option
+                .setName('genre')
+                .setDescription('Genre film')
+                .setRequired(true))
+            .addIntegerOption((option) => option
+                .setName('rating')
+                .setDescription('Rating dari 1 sampai 10')
+                .setMinValue(1)
+                .setMaxValue(10)
+                .setRequired(true)))
+        .addSubcommand((subcommand) => subcommand
+            .setName('list')
+            .setDescription('Tampilkan daftar film server'))
+].map((command) => command.toJSON());
+
+function loadFilms() {
+    if (!fs.existsSync(dataFile)) {
+        return [];
+    }
+
+    try {
+        return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+    } catch (error) {
+        console.error('films.json tidak bisa dibaca:', error.message);
+        return [];
+    }
+}
+
+function saveFilms(films) {
+    fs.writeFileSync(dataFile, JSON.stringify(films, null, 2));
+}
+
+async function registerCommands() {
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    await rest.put(
+        Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID),
+        { body: commands }
+    );
+}
+
+function buildHelpEmbed() {
+    return new EmbedBuilder()
+        .setColor(0x2f80ed)
+        .setTitle('Don Grouper Assisstant')
+        .setDescription('Siap membantu server ini.')
+        .addFields(
+            { name: '/ping', value: 'Cek status bot.' },
+            { name: '/server', value: 'Lihat informasi server.' },
+            { name: '/film tambah', value: 'Simpan film baru ke daftar server.' },
+            { name: '/film list', value: 'Lihat semua film yang tersimpan.' }
+        );
+}
+
+client.once(Events.ClientReady, async (readyClient) => {
+    try {
+        await registerCommands();
+    } catch (error) {
+        console.error('Gagal mendaftarkan command. Pastikan bot sudah diundang ke server dan DISCORD_GUILD_ID benar.');
+        console.error(error.message);
+        return;
+    }
+    console.log(`${readyClient.user.tag} aktif di ${process.env.DISCORD_GUILD_ID}`);
+    readyClient.user.setActivity('melayani Don Grouper Assisstant');
+});
+
+client.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot || !client.user || !message.mentions.has(client.user)) {
+        return;
+    }
+
+    const prompt = message.content
+        .replace(`<@${client.user.id}>`, '')
+        .replace(`<@!${client.user.id}>`, '')
+        .trim();
+
+    if (!groq) {
+        await message.reply('API Groq belum dipasang. Tambahkan `GROQ_API_KEY` ke file `.env`.');
+        return;
+    }
+
+    if (!prompt) {
+        await message.reply('Halo! Tulis pertanyaan setelah mention aku.');
+        return;
+    }
+
+    try {
+        await message.channel.sendTyping();
+        const response = await groq.chat.completions.create({
+            model: process.env.GROQ_MODEL || 'qwen/qwen3.8-27b',
+            messages: [
+                {
+                    role: 'system',
+                    content: 'Kamu adalah Don Grouper Assisstant, asisten Discord dengan gaya eksekutif klasik: tenang, percaya diri, tajam, persuasif, dan elegan. Jawab dalam bahasa Indonesia dengan ringkas namun bernas. Gunakan humor kering seperlunya, berikan sudut pandang strategis, dan hindari basa-basi, klaim berlebihan, atau meniru dialog karakter tertentu secara langsung.'
+                },
+                { role: 'user', content: prompt }
+            ],
+            max_tokens: 500
+        });
+        const answer = response.choices[0]?.message?.content || 'Maaf, Groq tidak mengembalikan jawaban.';
+        await message.reply(answer.slice(0, 2000));
+    } catch (error) {
+        console.error('Groq API error:', error.message);
+        await message.reply('Maaf, Groq sedang tidak bisa menjawab. Periksa API key atau coba lagi nanti.');
+    }
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand()) {
+        return;
+    }
+
+    if (interaction.commandName === 'ping') {
+        await interaction.reply(`Pong! Latensi ${Date.now() - interaction.createdTimestamp} ms.`);
+        return;
+    }
+
+    if (interaction.commandName === 'bantuan') {
+        await interaction.reply({ embeds: [buildHelpEmbed()] });
+        return;
+    }
+
+    if (interaction.commandName === 'server') {
+        const { guild } = interaction;
+        const owner = await guild.fetchOwner();
+        const embed = new EmbedBuilder()
+            .setColor(0x27ae60)
+            .setTitle(guild.name)
+            .addFields(
+                { name: 'Pemilik', value: owner.user.tag, inline: true },
+                { name: 'Member', value: String(guild.memberCount), inline: true },
+                { name: 'Dibuat', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:D>`, inline: true }
+            );
+        await interaction.reply({ embeds: [embed] });
+        return;
+    }
+
+    if (interaction.commandName === 'film') {
+        const subcommand = interaction.options.getSubcommand();
+        const films = loadFilms();
+
+        if (subcommand === 'tambah') {
+            const film = {
+                judul: interaction.options.getString('judul'),
+                tahun: interaction.options.getInteger('tahun'),
+                genre: interaction.options.getString('genre'),
+                rating: interaction.options.getInteger('rating'),
+                ditambahkanOleh: interaction.user.tag
+            };
+            films.push(film);
+            saveFilms(films);
+            await interaction.reply(`Film **${film.judul}** berhasil ditambahkan dengan rating **${film.rating}/10**.`);
+            return;
+        }
+
+        if (films.length === 0) {
+            await interaction.reply('Belum ada film yang tersimpan. Tambahkan dengan `/film tambah`.');
+            return;
+        }
+
+        const description = films
+            .slice(-10)
+            .reverse()
+            .map((film, index) => `**${index + 1}. ${film.judul}** (${film.tahun}) - ${film.genre}, rating ${film.rating}/10`)
+            .join('\n');
+        await interaction.reply({
+            embeds: [new EmbedBuilder()
+                .setColor(0xf2994a)
+                .setTitle('Daftar Film Server')
+                .setDescription(description)]
+        });
+    }
+});
+
+client.login(process.env.DISCORD_TOKEN);

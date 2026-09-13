@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Film Ditonton</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Daftar Film Ditonton</h1>
+            <p>Catat film yang sudah kamu tonton dan beri rating!</p>
+        </header>
+
+        <!-- Form Tambah Film -->
+        <div class="form-section">
+            <h2>Tambah Film Baru</h2>
+            <form id="filmForm">
+                <div class="form-group">
+                    <label for="judul">Judul Film</label>
+                    <input type="text" id="judul" placeholder="Contoh: Inception" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="tahun">Tahun Rilis</label>
+                    <input type="number" id="tahun" placeholder="Contoh: 2010" min="1900" max="2099" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="genre">Genre</label>
+                    <select id="genre" required>
+                        <option value="">-- Pilih Genre --</option>
+                        <option value="Action">Action</option>
+                        <option value="Comedy">Comedy</option>
+                        <option value="Drama">Drama</option>
+                        <option value="Horror">Horror</option>
+                        <option value="Sci-Fi">Sci-Fi</option>
+                        <option value="Romance">Romance</option>
+                        <option value="Thriller">Thriller</option>
+                        <option value="Animation">Animation</option>
+                        <option value="Other">Lainnya</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="rating">Rating (1-10)</label>
+                    <div class="rating-input">
+                        <input type="range" id="rating" min="1" max="10" value="5" step="1">
+                        <span id="ratingValue" class="rating-badge">5</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-add">➕ Tambah Film</button>
+            </form>
+        </div>
+
+        <!-- Daftar Film -->
+        <div class="list-section">
+            <div class="list-header">
+                <h2>Film yang Sudah Ditonton</h2>
+                <div class="stats">
+                    <span id="totalFilm">Total: 0 film</span>
+                    <span id="avgRating">Rata-rata: -</span>
+                </div>
+            </div>
+
+            <div id="filmList" class="film-list">
+                <!-- Film akan ditampilkan di sini -->
+            </div>
+
+            <div id="emptyMessage" class="empty-message">
+                <p>📭 Belum ada film yang ditonton. Tambahkan film pertamamu!</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
