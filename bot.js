@@ -165,11 +165,12 @@ const commands = [
                 .setName('genre')
                 .setDescription('Genre film')
                 .setRequired(true))
-            .addIntegerOption((option) => option
+            .addNumberOption((option) => option
                 .setName('rating')
-                .setDescription('Rating dari 1 sampai 10')
-                .setMinValue(1)
+                .setDescription('Rating dari 0.1 sampai 10')
+                .setMinValue(0.1)
                 .setMaxValue(10)
+                .setAutocomplete(false)
                 .setRequired(true)))
         .addSubcommand((subcommand) => subcommand
             .setName('list')
@@ -445,7 +446,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 judul: interaction.options.getString('judul'),
                 tahun: interaction.options.getInteger('tahun'),
                 genre: interaction.options.getString('genre'),
-                rating: interaction.options.getInteger('rating'),
+                rating: Number(interaction.options.getNumber('rating').toFixed(1)),
                 ditambahkanOleh: interaction.user.tag
             };
             films.push(film);
