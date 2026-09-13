@@ -4,6 +4,23 @@ const clientIdInput = document.getElementById('clientId');
 const configForm = document.getElementById('configForm');
 const configStatus = document.getElementById('configStatus');
 const inviteButton = document.getElementById('inviteButton');
+const menuToggle = document.querySelector('.menu-toggle');
+const mobileMenu = document.getElementById('mobileMenu');
+const menuClose = document.querySelector('.menu-close');
+
+function setMenuState(isOpen) {
+    mobileMenu.classList.toggle('is-open', isOpen);
+    mobileMenu.setAttribute('aria-hidden', String(!isOpen));
+    menuToggle.setAttribute('aria-expanded', String(isOpen));
+    document.body.classList.toggle('menu-open', isOpen);
+}
+
+menuToggle.addEventListener('click', () => setMenuState(true));
+menuClose.addEventListener('click', () => setMenuState(false));
+mobileMenu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setMenuState(false)));
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setMenuState(false);
+});
 
 function buildInviteUrl(clientId) {
     const params = new URLSearchParams({ client_id: clientId, scope: 'bot applications.commands', permissions: invitePermissions });
