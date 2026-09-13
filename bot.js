@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const fs = require('node:fs');
-const path = require('node:path');
+                    content: getAssistantPrompt(message.guildId)
 const Groq = require('groq-sdk');
 const {
     ChannelType,
@@ -37,6 +37,26 @@ const attentionMessages = [
     'Saya sudah menyiapkan popcorn secara metaforis. Ada yang mau `/random`?',
     'Keheningan ini punya potensi. Seseorang jalankan `/poll` dan mari buat keputusan.'
 ];
+const languageInstructions = {
+    indonesia: 'Jawab dalam bahasa Indonesia.',
+    inggris: 'Answer in English.',
+    spanyol: 'Responde en espanol.',
+    jepang: '日本語で答えてください。',
+    korea: '한국어로 답변하세요.',
+    prancis: 'Reponds en francais.'
+};
+const personalityInstructions = {
+    eksekutif: 'Tenang, percaya diri, tajam, persuasif, dan elegan. Gunakan humor kering seperlunya serta sudut pandang strategis.',
+    ramah: 'Hangat, ramah, suportif, dan mudah diajak bicara. Buat pengguna merasa diterima.',
+    formal: 'Profesional, sopan, terstruktur, dan objektif. Hindari slang dan basa-basi.',
+    komedian: 'Ceria dan lucu dengan punchline ringan. Tetap informatif dan jangan mengganggu saat topiknya serius.',
+    strategis: 'Analitis, tegas, dan berorientasi solusi. Sajikan pilihan, risiko, dan rekomendasi terbaik.',
+    singkat: 'Sangat ringkas dan langsung ke inti. Gunakan maksimal beberapa kalimat kecuali pengguna meminta detail.',
+    storyteller: 'Jelaskan dengan alur cerita yang menarik, imajinatif, dan mudah diikuti tanpa mengarang fakta.',
+    guru: 'Sabar seperti pengajar yang baik. Jelaskan konsep bertahap dengan contoh sederhana.',
+    gamer: 'Antusias seperti gamer, santai, dan memakai istilah gaming seperlunya tanpa berlebihan.',
+    noir: 'Misterius, tenang, dan puitis dengan nuansa detektif film noir. Tetap jelas dan membantu.'
+};
 
 function loadSettings() {
     if (!fs.existsSync(settingsFile)) return {};
@@ -49,6 +69,13 @@ function loadSettings() {
 
 function saveSettings(settings) {
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+}
+
+function getAssistantPrompt(guildId) {
+    const settings = serverSettings[guildId] || {};
+    const language = languageInstructions[settings.language] || languageInstructions.indonesia;
+    const personality = personalityInstructions[settings.personality] || personalityInstructions.eksekutif;
+    return `Kamu adalah Don Grouper Assisstant, asisten Discord untuk server film. ${personality} ${language} Jawab ringkas namun bernas, hindari klaim berlebihan, dan jangan meniru dialog karakter tertentu secara langsung.`;
 }
 
 const serverSettings = loadSettings();
@@ -119,6 +146,40 @@ const commands = [
                 .setDescription('Channel teks tujuan')
                 .addChannelTypes(ChannelType.GuildText)
                 .setRequired(true)))
+        .addSubcommand((subcommand) => subcommand
+            .setName('bahasa')
+            .setDescription('Atur bahasa jawaban bot')
+            .addStringOption((option) => option
+                .setName('pilihan')
+                .setDescription('Bahasa jawaban')
+                .addChoices(
+                    { name: 'Indonesia', value: 'indonesia' },
+                    { name: 'English', value: 'inggris' },
+                    { name: 'Espanol', value: 'spanyol' },
+                    { name: '日本語', value: 'jepang' },
+                    { name: '한국어', value: 'korea' },
+                    { name: 'Francais', value: 'prancis' }
+                )
+                .setRequired(true)))
+        .addSubcommand((subcommand) => subcommand
+            .setName('personality')
+            .setDescription('Atur gaya bicara bot')
+            .addStringOption((option) => option
+                .setName('gaya')
+                .setDescription('Gaya bicara bot')
+                .addChoices(
+                    { name: 'Eksekutif klasik', value: 'eksekutif' },
+                    { name: 'Ramah', value: 'ramah' },
+                    { name: 'Formal', value: 'formal' },
+                    { name: 'Komedian', value: 'komedian' },
+                    { name: 'Strategis', value: 'strategis' },
+                    { name: 'Sangat singkat', value: 'singkat' },
+                    { name: 'Storyteller', value: 'storyteller' },
+                    { name: 'Guru', value: 'guru' },
+                    { name: 'Gamer', value: 'gamer' },
+                    { name: 'Film noir', value: 'noir' }
+                )
+                .setRequired(true)))
 ].map((command) => command.toJSON()).concat(movieCommands);
 
 function loadFilms() {
@@ -160,7 +221,7 @@ function buildHelpEmbed() {
             { name: '/wherewatch, /trailer', value: 'Cek streaming legal dan trailer.' },
             { name: '/poll, /random, /watchlist', value: 'Movie night, rekomendasi acak, dan daftar tontonan.' },
             { name: '/rate, /trivia, /card', value: 'Review, trivia, dan koleksi kartu.' },
-            { name: '/settings', value: 'Atur pengingat chat sepi (moderator).' }
+            { name: '/settings', value: 'Atur pengingat, bahasa, dan personality bot (moderator).' }
         );
 }
 
@@ -269,7 +330,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (subcommand === 'status') {
             const enabled = settings.inactivityEnabled !== false;
             const channel = settings.inactivityChannelId ? `<#${settings.inactivityChannelId}>` : 'channel chat terakhir';
-            await interaction.reply({ content: `**Pengaturan Don Grouper Assisstant**\nPengingat chat sepi: **${enabled ? 'aktif' : 'nonaktif'}**\nChannel pengingat: ${channel}`, ephemeral: true });
+            await interaction.reply({ content: `**Pengaturan Don Grouper Assisstant**\nPengingat chat sepi: **${enabled ? 'aktif' : 'nonaktif'}**\nChannel pengingat: ${channel}\nBahasa: **${settings.language || 'indonesia'}**\nPersonality: **${settings.personality || 'eksekutif'}**`, ephemeral: true });
             return;
         }
         if (subcommand === 'inactivity') {
@@ -277,6 +338,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
             serverSettings[interaction.guildId] = settings;
             saveSettings(serverSettings);
             await interaction.reply(`Pengingat chat sepi sekarang **${settings.inactivityEnabled ? 'aktif' : 'nonaktif'}**.`);
+            return;
+        }
+        if (subcommand === 'bahasa') {
+            settings.language = interaction.options.getString('pilihan');
+            serverSettings[interaction.guildId] = settings;
+            saveSettings(serverSettings);
+            await interaction.reply(`Bahasa bot diubah menjadi **${settings.language}**.`);
+            return;
+        }
+        if (subcommand === 'personality') {
+            settings.personality = interaction.options.getString('gaya');
+            serverSettings[interaction.guildId] = settings;
+            saveSettings(serverSettings);
+            await interaction.reply(`Personality bot diubah menjadi **${settings.personality}**.`);
             return;
         }
         settings.inactivityChannelId = interaction.options.getChannel('channel').id;
