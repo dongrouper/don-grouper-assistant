@@ -1,7 +1,6 @@
 require('dotenv').config();
 
 const fs = require('node:fs');
-                    content: getAssistantPrompt(message.guildId)
 const Groq = require('groq-sdk');
 const {
     ChannelType,
@@ -286,7 +285,7 @@ client.on(Events.MessageCreate, async (message) => {
             messages: [
                 {
                     role: 'system',
-                    content: 'Kamu adalah Don Grouper Assisstant, asisten Discord dengan gaya eksekutif klasik: tenang, percaya diri, tajam, persuasif, dan elegan. Jawab dalam bahasa Indonesia dengan ringkas namun bernas. Gunakan humor kering seperlunya, berikan sudut pandang strategis, dan hindari basa-basi, klaim berlebihan, atau meniru dialog karakter tertentu secara langsung.'
+                    content: getAssistantPrompt(message.guildId)
                 },
                 { role: 'user', content: prompt }
             ],
