@@ -21,12 +21,12 @@ const genres = {
 
 function loadData() {
     if (!fs.existsSync(dataFile)) {
-        return { watchlists: {}, ratings: [], polls: {}, letterboxd: {}, cards: {} };
+        return { watchlists: {}, ratings: [], polls: {}, letterboxd: {}, cards: {}, trivia: {} };
     }
     try {
         return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
     } catch {
-        return { watchlists: {}, ratings: [], polls: {}, letterboxd: {}, cards: {} };
+        return { watchlists: {}, ratings: [], polls: {}, letterboxd: {}, cards: {}, trivia: {} };
     }
 }
 
@@ -194,6 +194,22 @@ async function handleButton(interaction) {
         const counts = poll.options.map((title, position) => `${position + 1}. **${title}**: ${Object.values(poll.votes).filter((vote) => vote === position).length} suara`).join('\n');
         return interaction.reply({ content: `Suaramu tercatat.\n${counts}`, ephemeral: true });
     }
+
+    if (interaction.customId.startsWith('trivia:answer:')) {
+        const [, , triviaId, optionIndex] = interaction.customId.split(':');
+        const data = loadData();
+        const trivia = data.trivia[triviaId];
+        if (!trivia) return interaction.reply({ content: 'Trivia sudah tidak tersedia.', ephemeral: true });
+
+        const selected = trivia.options[Number(optionIndex)];
+        const isCorrect = selected === trivia.answer;
+        return interaction.reply({
+            content: isCorrect
+                ? `Benar, ${interaction.user}! Jawabannya **${trivia.answer}**.`
+                : `Belum tepat, ${interaction.user}. Jawaban yang benar adalah **${trivia.answer}**.`,
+            ephemeral: true
+        });
+    }
 }
 
 async function handleCard(interaction) {
@@ -219,8 +235,30 @@ async function handleRate(interaction) {
 }
 
 async function handleTrivia(interaction) {
-    const result = await tmdb('/movie/popular', { language: 'id-ID' }); const movie = result.results[Math.floor(Math.random() * result.results.length)];
-    return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x9b59b6).setTitle('Tebak Film').setDescription(`Petunjuk: film ini dirilis tahun **${movie.release_date?.slice(0, 4) || '?'}** dan memiliki rating **${movie.vote_average?.toFixed(1)}/10**. Tebak judulnya!`).setImage(imageUrl(movie.backdrop_path))], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`trivia:answer:${movie.id}`).setLabel('Lihat Jawaban').setStyle(ButtonStyle.Secondary))] });
+    const result = await tmdb('/movie/popular', { language: 'id-ID' });
+    const movie = result.results[Math.floor(Math.random() * result.results.length)];
+    const distractors = result.results
+        .filter((candidate) => candidate.id !== movie.id && candidate.title)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map((candidate) => candidate.title);
+    const options = [...distractors, movie.title].sort(() => Math.random() - 0.5);
+    const triviaId = interaction.id;
+    const data = loadData();
+    data.trivia[triviaId] = { answer: movie.title, options };
+    saveData(data);
+    const buttons = options.map((title, index) => new ButtonBuilder()
+        .setCustomId(`trivia:answer:${triviaId}:${index}`)
+        .setLabel(`${index + 1}. ${title}`.slice(0, 80))
+        .setStyle(ButtonStyle.Primary));
+    return interaction.reply({
+        embeds: [new EmbedBuilder()
+            .setColor(0x9b59b6)
+            .setTitle('Tebak Film')
+            .setDescription(`Petunjuk: film ini dirilis tahun **${movie.release_date?.slice(0, 4) || '?'}** dan memiliki rating **${movie.vote_average?.toFixed(1)}/10**. Pilih judul yang benar!`)
+            .setImage(imageUrl(movie.backdrop_path))],
+        components: [new ActionRowBuilder().addComponents(buttons)]
+    });
 }
 
 async function handleMovieFeature(interaction) {
