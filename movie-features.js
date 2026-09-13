@@ -235,7 +235,13 @@ async function handleRate(interaction) {
 }
 
 async function handleTrivia(interaction) {
-    const result = await tmdb('/movie/popular', { language: 'id-ID' });
+    const result = await tmdb('/discover/movie', {
+        language: 'id-ID',
+        sort_by: 'vote_average.desc',
+        'vote_count.gte': 300,
+        'primary_release_date.lte': new Date().toISOString().slice(0, 10),
+        page: Math.floor(Math.random() * 5) + 1
+    });
     const movie = result.results[Math.floor(Math.random() * result.results.length)];
     const distractors = result.results
         .filter((candidate) => candidate.id !== movie.id && candidate.title)
