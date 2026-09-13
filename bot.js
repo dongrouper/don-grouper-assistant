@@ -25,6 +25,15 @@ const dataFile = path.join(__dirname, 'films.json');
 const groq = process.env.GROQ_API_KEY
     ? new Groq({ apiKey: process.env.GROQ_API_KEY })
     : null;
+const inactivityLimit = 60 * 60 * 1000;
+const guildActivity = new Map();
+const attentionMessages = [
+    'Server terlalu tenang. Pilih satu film untuk movie night, atau biarkan saya memilihkannya.',
+    'Satu jam tanpa keributan. Kita bisa memperbaikinya dengan `/trivia` atau `/card gacha`.',
+    'Pertanyaan penting: film apa yang layak ditonton malam ini?',
+    'Saya sudah menyiapkan popcorn secara metaforis. Ada yang mau `/random`?',
+    'Keheningan ini punya potensi. Seseorang jalankan `/poll` dan mari buat keputusan.'
+];
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -127,8 +136,27 @@ client.once(Events.ClientReady, async (readyClient) => {
     readyClient.user.setActivity('melayani Don Grouper Assisstant');
 });
 
+setInterval(async () => {
+    const now = Date.now();
+    for (const [guildId, activity] of guildActivity) {
+        if (now - activity.lastMessageAt < inactivityLimit) continue;
+        const channel = await client.channels.fetch(activity.channelId).catch(() => null);
+        if (!channel?.isTextBased() || !channel.send) continue;
+        await channel.send(attentionMessages[Math.floor(Math.random() * attentionMessages.length)]).catch((error) => {
+            console.error(`Tidak bisa mengirim pengingat di guild ${guildId}:`, error.message);
+        });
+        activity.lastMessageAt = now;
+    }
+}, 60 * 1000);
+
 client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot || !client.user || !message.mentions.has(client.user)) {
+    if (message.author.bot) {
+        return;
+    }
+
+    guildActivity.set(message.guildId, { lastMessageAt: Date.now(), channelId: message.channelId });
+
+    if (!client.user || !message.mentions.has(client.user)) {
         return;
     }
 
