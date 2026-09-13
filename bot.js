@@ -4,11 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const Groq = require('groq-sdk');
 const {
+    ChannelType,
     Client,
     Collection,
     EmbedBuilder,
     Events,
     GatewayIntentBits,
+    PermissionFlagsBits,
     REST,
     Routes,
     SlashCommandBuilder
@@ -22,6 +24,7 @@ if (missingEnv.length > 0) {
 }
 
 const dataFile = path.join(__dirname, 'films.json');
+const settingsFile = path.join(__dirname, 'bot-settings.json');
 const groq = process.env.GROQ_API_KEY
     ? new Groq({ apiKey: process.env.GROQ_API_KEY })
     : null;
@@ -34,6 +37,21 @@ const attentionMessages = [
     'Saya sudah menyiapkan popcorn secara metaforis. Ada yang mau `/random`?',
     'Keheningan ini punya potensi. Seseorang jalankan `/poll` dan mari buat keputusan.'
 ];
+
+function loadSettings() {
+    if (!fs.existsSync(settingsFile)) return {};
+    try {
+        return JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+    } catch {
+        return {};
+    }
+}
+
+function saveSettings(settings) {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+}
+
+const serverSettings = loadSettings();
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -79,7 +97,28 @@ const commands = [
                 .setRequired(true)))
         .addSubcommand((subcommand) => subcommand
             .setName('list')
-            .setDescription('Tampilkan daftar film server'))
+            .setDescription('Tampilkan daftar film server')),
+    new SlashCommandBuilder()
+        .setName('settings')
+        .setDescription('Atur perilaku bot untuk server ini')
+        .addSubcommand((subcommand) => subcommand
+            .setName('status')
+            .setDescription('Lihat pengaturan bot'))
+        .addSubcommand((subcommand) => subcommand
+            .setName('inactivity')
+            .setDescription('Nyalakan atau matikan pengingat chat sepi')
+            .addBooleanOption((option) => option
+                .setName('aktif')
+                .setDescription('Aktif atau nonaktif')
+                .setRequired(true)))
+        .addSubcommand((subcommand) => subcommand
+            .setName('channel')
+            .setDescription('Pilih channel untuk pengingat chat sepi')
+            .addChannelOption((option) => option
+                .setName('channel')
+                .setDescription('Channel teks tujuan')
+                .addChannelTypes(ChannelType.GuildText)
+                .setRequired(true)))
 ].map((command) => command.toJSON()).concat(movieCommands);
 
 function loadFilms() {
@@ -120,7 +159,8 @@ function buildHelpEmbed() {
             { name: '/movie', value: 'Info film lengkap dari TMDB.' },
             { name: '/wherewatch, /trailer', value: 'Cek streaming legal dan trailer.' },
             { name: '/poll, /random, /watchlist', value: 'Movie night, rekomendasi acak, dan daftar tontonan.' },
-            { name: '/rate, /trivia, /card', value: 'Review, trivia, dan koleksi kartu.' }
+            { name: '/rate, /trivia, /card', value: 'Review, trivia, dan koleksi kartu.' },
+            { name: '/settings', value: 'Atur pengingat chat sepi (moderator).' }
         );
 }
 
@@ -139,8 +179,11 @@ client.once(Events.ClientReady, async (readyClient) => {
 setInterval(async () => {
     const now = Date.now();
     for (const [guildId, activity] of guildActivity) {
+        const settings = serverSettings[guildId] || {};
+        if (settings.inactivityEnabled === false) continue;
         if (now - activity.lastMessageAt < inactivityLimit) continue;
-        const channel = await client.channels.fetch(activity.channelId).catch(() => null);
+        const channelId = settings.inactivityChannelId || activity.channelId;
+        const channel = await client.channels.fetch(channelId).catch(() => null);
         if (!channel?.isTextBased() || !channel.send) continue;
         await channel.send(attentionMessages[Math.floor(Math.random() * attentionMessages.length)]).catch((error) => {
             console.error(`Tidak bisa mengirim pengingat di guild ${guildId}:`, error.message);
@@ -213,6 +256,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (['movie', 'wherewatch', 'trailer', 'poll', 'movieevent', 'random', 'watchlist', 'letterboxd', 'rate', 'trivia', 'card'].includes(interaction.commandName)) {
         await handleMovieFeature(interaction);
+        return;
+    }
+
+    if (interaction.commandName === 'settings') {
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+            await interaction.reply({ content: 'Hanya moderator dengan izin Manage Server yang dapat mengubah settings.', ephemeral: true });
+            return;
+        }
+        const settings = serverSettings[interaction.guildId] || {};
+        const subcommand = interaction.options.getSubcommand();
+        if (subcommand === 'status') {
+            const enabled = settings.inactivityEnabled !== false;
+            const channel = settings.inactivityChannelId ? `<#${settings.inactivityChannelId}>` : 'channel chat terakhir';
+            await interaction.reply({ content: `**Pengaturan Don Grouper Assisstant**\nPengingat chat sepi: **${enabled ? 'aktif' : 'nonaktif'}**\nChannel pengingat: ${channel}`, ephemeral: true });
+            return;
+        }
+        if (subcommand === 'inactivity') {
+            settings.inactivityEnabled = interaction.options.getBoolean('aktif');
+            serverSettings[interaction.guildId] = settings;
+            saveSettings(serverSettings);
+            await interaction.reply(`Pengingat chat sepi sekarang **${settings.inactivityEnabled ? 'aktif' : 'nonaktif'}**.`);
+            return;
+        }
+        settings.inactivityChannelId = interaction.options.getChannel('channel').id;
+        serverSettings[interaction.guildId] = settings;
+        saveSettings(serverSettings);
+        await interaction.reply(`Pengingat chat sepi akan dikirim ke <#${settings.inactivityChannelId}>.`);
         return;
     }
 
